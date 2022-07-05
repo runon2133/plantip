@@ -1,0 +1,278 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="counsel">
+	<insert id="insertCounsel">
+		insert into COUNSEL values(counsel_no_seq.nextval, #{counselTitle}, #{counselContent}, #{counselWriter}, default, default, default)
+	</insert>
+	
+	<select id="selectCounselNo" resultType="_int">
+		select max(counsel_no) from COUNSEL
+	</select>
+	
+	<insert id="insertCounselImg">
+		insert into COUNSEL_IMG values(counsel_img_no_seq.nextval, #{counselNo}, #{filename}, #{filepath})
+	</insert>
+	
+	<select id="selectCounselList" parameterType="map" resultType="c">
+  		select
+  			*
+  		from
+  		(select
+  			rownum as rnum,
+  			A.*
+  		from
+  		(select
+  			counsel_no as counselNo,
+		    counsel_title as counselTitle,
+		    counsel_content as counselContent,
+		    counsel_writer as counselWriter,
+		    to_char(counsel_regdate, 'yyyy.mm.dd') as counselRegdate,
+		    counsel_readcount as counselReadcount,
+		    counsel_like as counselLike,
+  			(select count(*) from REPLY where counsel_no=C.counsel_no) as replyCount
+  		from COUNSEL C order by counsel_no desc) A)
+  		where rnum between #{start} and #{end}
+	</select>
+	
+	<select id="searchCounselList" parameterType="map" resultType="c">
+		select
+			*
+		from
+		(select
+			rownum as rnum,
+			A.* 
+		from
+		(select
+			counsel_no as counselNo,
+		    counsel_title as counselTitle,
+		    counsel_content as counselContent,
+		    counsel_writer as counselWriter,
+		    to_char(counsel_regdate, 'yyyy.mm.dd') as counselRegdate,
+		    counsel_readcount as counselReadcount,
+		    counsel_like as counselLike, 
+			(select count(*) from REPLY where counsel_no=C.counsel_no) as reply_count
+		from COUNSEL C where counsel_title like '%' || #{keyword} || '%' or counsel_content like '%' || #{keyword} || '%' order by counsel_no desc) A)
+		where rnum between #{start} and #{end}
+	</select>
+	
+	<select id="selectTotalCount" resultType="_int">
+		select count(*) as cnt from COUNSEL
+	</select>
+	
+	<select id="searchTotalCount" parameterType="String" resultType="_int">
+		select count(*) as cnt from COUNSEL where counsel_title like '%' || #{keyword} || '%' or counsel_content like '%' || #{keyword} || '%'
+	</select>
+	
+	<update id="updateReadcount" parameterType="_int">
+		update COUNSEL set counsel_readcount=(counsel_readcount + 1) where counsel_no=#{counselNo}
+	</update>
+	
+	<select id="selectCounsel" parameterType="_int" resultMap="CounselViewData">
+		select * from COUNSEL where counsel_no=#{counselNo}
+	</select>
+	
+	<!-- resultMap과 id를 일치시킴 나가는 결과는 resultMap -->
+  	<resultMap type="cvd" id="CounselViewData">
+  		<collection property="counsel"
+  					column="counsel_no"
+  					ofType="c"
+  					select="selectOneCounsel"
+  		/>
+  		
+  		<collection property="counselImgList"
+  					column="counsel_no"
+  					javaType="java.util.ArrayList"
+  					ofType="ci"
+  					select="selectCounselImgList"
+  		/>
+  		
+  		<collection property="replyList"
+  					column="counsel_no"
+  					javaType="java.util.ArrayList"
+  					ofType="r"
+  					select="selectReplyList"
+  		/>
+  	</resultMap>
+  	
+  	<select id="selectOneCounsel" parameterType="_int" resultType="c">
+  		select 
+  			counsel_no as counselNo,
+		    counsel_title as counselTitle,
+		    counsel_content as counselContent,
+		    counsel_writer as counselWriter,
+		    to_char(counsel_regdate, 'yyyy.mm.dd') as counselRegdate,
+		    counsel_readcount as counselReadcount,
+		    counsel_like as counselLike
+  		from COUNSEL where counsel_no=#{counselNo}
+  	</select>
+  	
+  	<select id="selectCounselImgList" parameterType="_int" resultType="ci">
+  		select
+  			counsel_img_no as counselImgNo,
+  			counsel_no as counselNo,
+  			filename,
+  			filepath
+  		from COUNSEL_IMG where counsel_no=#{counselNo}
+  	</select>
+
+  	<select id="selectReplyList" parameterType="_int" resultType="r">
+  		select 
+  			r.*,
+ 			member_img as memberImg
+		from
+		(select 
+			reply_no as replyNo,
+			reply_level as replyLevel,
+			reply_writer as replyWriter,
+			reply_content as replyContent,
+			to_char(reply_regdate, 'yyyy.mm.dd hh24:mi:ss') as replyRegdate,
+			counsel_no as counselNo,
+			reply_no_ref as replyNoRef,
+			reply_to as replyTo,
+			delete_chk as deleteChk
+		from REPLY) r
+		left join MEMBER on(replyWriter = member_id)
+		where counselNo=#{counselNo} order by 1
+  	</select>
+  	 
+  	<insert id="insertReply" parameterType="r">
+  		<choose>
+  			<when test="replyNoRef == 0">
+				insert into REPLY values(reply_no_seq.nextval, #{replyLevel}, #{replyWriter}, #{replyContent}, sysdate, #{counselNo}, null, null, default )
+  			</when>
+  			<otherwise>
+				insert into REPLY values(reply_no_seq.nextval, #{replyLevel}, #{replyWriter}, #{replyContent}, sysdate, #{counselNo}, #{replyNoRef}, #{replyTo}, default )
+  			</otherwise>
+  		</choose>
+  	</insert>
+  	
+  	<select id="selectOneReply" parameterType="_int" resultType="r">
+  		select
+  			reply_no as replyNo,
+  			reply_level as replyLevel,
+  			reply_writer as replyWriter,
+  			reply_content as replyContent,
+  			to_char(reply_regdate, 'yyyy.mm.dd hh24:mi:ss') as replyRegdate,
+  			counsel_no as counselNo,
+  			reply_no_ref as replyNoRef,
+  			reply_to as replyTo,
+  			delete_chk as deleteChk
+  		from REPLY where reply_no=#{replyNo}
+  	</select>
+  	
+  	<delete id="deleteReply" parameterType="r">
+  		update REPLY set delete_chk=1 where reply_no=#{replyNo} and reply_writer=#{replyWriter}
+  	</delete>
+  	
+  	<update id="updateReply" parameterType="r">
+  		update REPLY set reply_content=#{replyContent} where reply_no=#{replyNo} and reply_writer=#{replyWriter}
+  	</update>
+  	
+  	<select id="countReply" parameterType="_int" resultType="_int">
+  		select count(*) from REPLY where counsel_no=#{counselNo}
+  	</select>
+  	
+  	<select id="counselLikeView" parameterType="cl" resultType="_int">
+  		select count(counsel_like_check) from COUNSEL_LIKE where counsel_no=#{counselNo} and member_id=#{memberId}
+  	</select>
+  	
+  	<select id="countLike" parameterType="_int" resultType="_int">
+  		select count(*) from COUNSEL_LIKE where counsel_no=#{counselNo} and counsel_like_check=1
+  	</select>
+  	
+  	<insert id="likeUp" parameterType="cl">
+		insert into COUNSEL_LIKE values(counsel_like_no_seq.nextval, #{counselNo}, #{memberId}, 1)
+  	</insert>
+  	
+  	<delete id="likeDown" parameterType="cl">
+		delete from COUNSEL_LIKE where counsel_no=#{counselNo} and member_id=#{memberId}
+  	</delete>
+  	
+  	<delete id="deleteCounsel" parameterType="cl">
+  		delete from COUNSEL where counsel_no=#{counselNo} and counsel_writer=#{memberId}
+  	</delete>
+  	
+  	<update id="updateCounsel" parameterType="c">
+		update COUNSEL set counsel_title=#{counselTitle}, counsel_content=#{counselContent} where counsel_no=#{counselNo} and counsel_writer=#{counselWriter}
+	</update>
+	
+	<delete id="deleteCounselImg" parameterType="_int">
+		delete from COUNSEL_IMG where counsel_no=#{counselNo}
+	</delete>
+	
+	<select id="likeCounselList" parameterType="map" resultType="c">
+  		select
+  			*
+  		from
+  		(select
+  			rownum as rnum,
+  			A.* 
+  		from
+  		(select
+  			C.counsel_no as counselNo,
+		    C.counsel_title as counselTitle,
+		    C.counsel_content as counselContent,
+		    C.counsel_writer as counselWriter,
+		    to_char(C.counsel_regdate, 'yyyy.mm.dd') as counselRegdate,
+		    C.counsel_readcount as counselReadcount,
+		    C.counsel_like as counselLike, 
+  			(select count(*) from REPLY where counsel_no=C.counsel_no) as replyCount
+  		from COUNSEL C left join COUNSEL_LIKE L on(C.counsel_no = L.counsel_no) where L.member_id=#{memberId} order by C.counsel_no desc) A)
+  		where rnum between #{start} and #{end}
+	</select>
+	
+	<select id="likeTotalCount" parameterType="String" resultType="_int">
+		select count(*) as cnt from COUNSEL_LIKE where member_id=#{memberId}
+	</select>
+
+	<select id="writeCounselList" parameterType="map" resultType="c">
+  		select
+  			*
+  		from
+  		(select
+  			rownum as rnum,
+  			A.*
+  		from
+  		(select
+  			counsel_no as counselNo,
+		    counsel_title as counselTitle,
+		    counsel_content as counselContent,
+		    counsel_writer as counselWriter,
+		    to_char(counsel_regdate, 'yyyy.mm.dd') as counselRegdate,
+		    counsel_readcount as counselReadcount,
+		    counsel_like as counselLike,
+  			(select count(*) from REPLY where counsel_no=C.counsel_no) as replyCount
+  		from COUNSEL C where C.counsel_writer=#{counselWriter} order by counsel_no desc) A)
+  		where rnum between #{start} and #{end}
+	</select>
+	
+	<select id="writeCounselTotalCount" parameterType="String" resultType="_int">
+		select count(*) as cnt from COUNSEL where counsel_writer=#{counselWriter}
+	</select>
+	
+	<select id="writeReplyList" parameterType="map" resultType="r">
+		select
+			*
+		from
+		(select
+			rownum as rnum,
+			R.*
+		from
+		(select
+			reply_no as replyNo,
+  			reply_level as replyLevel,
+  			reply_writer as replyWriter,
+  			reply_content as replyContent,
+  			to_char(reply_regdate, 'yyyy.mm.dd hh24:mi:ss') as replyRegdate,
+  			counsel_no as counselNo,
+  			reply_no_ref as replyNoRef,
+  			reply_to as replyTo,
+  			delete_chk as deleteChk
+		from REPLY where reply_writer=#{replyWriter} and delete_chk=0 order by reply_regdate desc) R)
+		where rnum between #{start} and #{end}
+	</select>
+	
+	<select id="writeReplyTotalCount" parameterType="String" resultType="_int">
+		select count(*) as cnt from REPLY where reply_writer=#{replyWriter} and delete_chk=0
+	</select>
+</mapper>

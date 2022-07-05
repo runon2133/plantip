@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE configuration PUBLIC "-//mybatis.org//DTD Config 3.0//EN" "http://mybatis.org/dtd/mybatis-3-config.dtd" >
+<configuration>
+	<settings>
+		<setting name="jdbcTypeForNull" value="NULL"/>
+	</settings>
+	
+	<typeAliases>
+		<typeAlias type="kr.co.member.model.vo.Member" alias="m"/>
+		<typeAlias type="kr.co.counsel.model.vo.Counsel" alias="c"/>
+		<typeAlias type="kr.co.counsel.model.vo.CounselImg" alias="ci"/>
+		<typeAlias type="kr.co.counsel.model.vo.CounselLike" alias="cl"/>
+		<typeAlias type="kr.co.counsel.model.vo.CounselViewData" alias="cvd"/>
+		<typeAlias type="kr.co.reply.model.vo.Reply" alias="r"/>
+	</typeAliases>
+	
+</configuration>
